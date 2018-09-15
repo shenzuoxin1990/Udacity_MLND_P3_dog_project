@@ -60,7 +60,7 @@
 # - `train_targets`, `valid_targets`, `test_targets` - 包含独热编码分类标签的numpy数组
 # - `dog_names` - 由字符串构成的与标签相对应的狗的种类
 
-# In[1]:
+# In[27]:
 
 
 from sklearn.datasets import load_files       
@@ -95,7 +95,7 @@ print('There are %d test dog images.'% len(test_files))
 # 
 # 在下方的代码单元中，我们导入人脸图像数据集，文件所在路径存储在名为 `human_files` 的 numpy 数组。
 
-# In[2]:
+# In[28]:
 
 
 import random
@@ -117,7 +117,7 @@ print('There are %d total human images.' % len(human_files))
 # 
 # 在如下代码单元中，我们将演示如何使用这个检测模型在样本图像中找到人脸。
 
-# In[3]:
+# In[29]:
 
 
 import cv2                
@@ -160,7 +160,7 @@ plt.show()
 # 
 # 我们可以将这个程序封装为一个函数。该函数的输入为人脸图像的**路径**，当图像中包含人脸时，该函数返回 `True`，反之返回 `False`。该函数定义如下所示。
 
-# In[4]:
+# In[30]:
 
 
 # 如果img_path路径表示的图像检测到了脸，返回"True" 
@@ -186,7 +186,7 @@ def face_detector(img_path):
 # 
 # 理想情况下，人图像中检测到人脸的概率应当为100%，而狗图像中检测到人脸的概率应该为0%。你会发现我们的算法并非完美，但结果仍然是可以接受的。我们从每个数据集中提取前100个图像的文件路径，并将它们存储在`human_files_short`和`dog_files_short`中。
 
-# In[5]:
+# In[31]:
 
 
 human_files_short = human_files[:100]
@@ -196,17 +196,27 @@ dog_files_short = train_files[:100]
 
 ## TODO: 基于human_files_short和dog_files_short
 ## 中的图像测试face_detector的表现
-human_error = 0
+human_detect = 0
 for human_file in human_files_short:
     if (face_detector(human_file) == True):
-        human_error += 1
-print ("face_detector在human_files_short中检测到人脸的图像占比为：%s%%" % (100 * float(human_error)/human_files_short.size))
+        human_detect += 1
+print ("face_detector在human_files_short中检测到人脸的图像占比为：%s%%" % (100 * float(human_detect)/human_files_short.size))
 
-dog_error = 0
+human_detect_in_dogs = 0
 for dog_file in dog_files_short:
     if (face_detector(dog_file) == True):
-        dog_error += 1
-print ("face_detector在dog_files_short中检测到人脸的图像占比为：%s%%" % (100 * float(dog_error)/dog_files_short.size))
+        human_detect_in_dogs += 1
+print ("face_detector在dog_files_short中检测到人脸的图像占比为：%s%%" % (100 * float(human_detect_in_dogs)/dog_files_short.size))
+
+
+# In[32]:
+
+
+## 改进方案
+human_detect_percent = np.mean([face_detector(human) for human in human_files_short])
+human_detect_in_dogs_percent = np.mean([face_detector(dog) for dog in dog_files_short])
+print ("face_detector在human_files_short中检测到人脸的图像占比为：%s%%" % (100 * human_detect_percent))
+print ("face_detector在dog_files_short中检测到人脸的图像占比为：%s%%" % (100 * human_detect_in_dogs_percent))
 
 
 # ---
@@ -219,7 +229,7 @@ print ("face_detector在dog_files_short中检测到人脸的图像占比为：%s
 # 那么你认为，这样的要求在实际使用中对用户合理吗？如果你觉得不合理，你能否想到一个方法，即使图像中并没有清晰的面部特征，也能够检测到人脸？
 # 
 # __回答:__
-# 不合理，目前还想不到。。。只能猜一猜了，比如将在黑暗中的照片提高曝光度？或者试着做一下模糊还原？
+# 不合理，目前还想不到。。。只能猜一猜了，比如将在黑暗中的照片提高曝光度？或者试着做一下模糊还原？使用深度神经网路！！！
 
 # ---
 # 
@@ -244,7 +254,7 @@ print ("face_detector在dog_files_short中检测到人脸的图像占比为：%s
 # 
 # ImageNet 这目前一个非常流行的数据集，常被用来测试图像分类等计算机视觉任务相关的算法。它包含超过一千万个 URL，每一个都链接到 [1000 categories](https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a) 中所对应的一个物体的图像。任给输入一个图像，该 ResNet-50 模型会返回一个对图像中物体的预测结果。
 
-# In[6]:
+# In[33]:
 
 
 from keras.applications.resnet50 import ResNet50
@@ -266,7 +276,7 @@ ResNet50_model = ResNet50(weights='imagenet')
 # 
 # - `paths_to_tensor` 函数将图像路径的字符串组成的 numpy 数组作为输入，并返回一个4维张量，各维度尺寸为 `(nb_samples, 224, 224, 3)`。 在这里，`nb_samples`是提供的图像路径的数据中的样本数量或图像数量。你也可以将 `nb_samples` 理解为数据集中3维张量的个数（每个3维张量表示一个不同的图像。
 
-# In[7]:
+# In[34]:
 
 
 from keras.preprocessing import image                  
@@ -299,7 +309,7 @@ def paths_to_tensor(img_paths):
 # 通过对预测出的向量取用 argmax 函数（找到有最大概率值的下标序号），我们可以得到一个整数，即模型预测到的物体的类别。进而根据这个 [清单](https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a)，我们能够知道这具体是哪个品种的狗狗。
 # 
 
-# In[8]:
+# In[35]:
 
 
 from keras.applications.resnet50 import preprocess_input, decode_predictions
@@ -316,7 +326,7 @@ def ResNet50_predict_labels(img_path):
 # 
 # 我们通过这些想法来完成下方的 `dog_detector` 函数，如果从图像中检测到狗就返回 `True`，否则返回 `False`。
 
-# In[9]:
+# In[36]:
 
 
 def dog_detector(img_path):
@@ -336,21 +346,31 @@ def dog_detector(img_path):
 # - `human_files_short`中图像检测到狗狗的百分比？
 # - `dog_files_short`中图像检测到狗狗的百分比？
 
-# In[10]:
+# In[37]:
 
 
 ### TODO: 测试dog_detector函数在human_files_short和dog_files_short的表现
-human_error = 0
+dog_detect_in_human = 0
 for human_file in human_files_short:
     if (dog_detector(human_file) == True):
-        human_error += 1
-print ("ResNet50在human_files_short中检测到狗狗的百分比为：%s%%" % (100 * float(human_error)/human_files_short.size))
+        dog_detect_in_human += 1
+print ("ResNet50在human_files_short中检测到狗狗的百分比为：%s%%" % (100 * float(dog_detect_in_human)/human_files_short.size))
 
-dog_error = 0
+dog_detect = 0
 for dog_file in dog_files_short:
     if (dog_detector(dog_file) == True):
-        dog_error += 1
-print ("ResNet50在dog_files_short中检测到狗狗的百分比为：%s%%" % (100 * float(dog_error)/dog_files_short.size))
+        dog_detect += 1
+print ("ResNet50在dog_files_short中检测到狗狗的百分比为：%s%%" % (100 * float(dog_detect)/dog_files_short.size))
+
+
+# In[38]:
+
+
+# 改进方案
+dog_detect_in_human_percent = np.mean([dog_detector(human) for human in human_files_short])
+dog_detect_percent = np.mean([dog_detector(dog) for dog in dog_files_short])
+print ("ResNet50在human_files_short中检测到狗狗的百分比为：%s%%" % (100 * dog_detect_in_human_percent))
+print ("ResNet50在dog_files_short中检测到狗狗的百分比为：%s%%" % (100 * dog_detect_percent))
 
 
 # ---
@@ -394,7 +414,7 @@ print ("ResNet50在dog_files_short中检测到狗狗的百分比为：%s%%" % (1
 # 
 # 通过对每张图像的像素值除以255，我们对图像实现了归一化处理。
 
-# In[11]:
+# In[39]:
 
 
 from PIL import ImageFile                            
@@ -429,7 +449,7 @@ test_tensors = paths_to_tensor(test_files).astype('float32')/255
 # __回答:__ 
 # 根据示例的步骤搭建了CNN网络，只是做了稍加修改，将每一层过滤器的宽和高设置成3个像素，至于为什么使用如上的架构，Emm。。。测一测不就知道了么.
 
-# In[12]:
+# In[40]:
 
 
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
@@ -450,7 +470,7 @@ model.add(Dense(133, activation='softmax'))
 model.summary()
 
 
-# In[13]:
+# In[41]:
 
 
 ## 编译模型
@@ -474,14 +494,14 @@ model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['ac
 # 
 # 
 
-# In[14]:
+# In[43]:
 
 
 from keras.callbacks import ModelCheckpoint  
 
 ### TODO: 设置训练模型的epochs的数量
 
-epochs = 20
+epochs = 30
 
 ### 不要修改下方代码
 
@@ -493,7 +513,7 @@ model.fit(train_tensors, train_targets,
           epochs=epochs, batch_size=20, callbacks=[checkpointer], verbose=1)
 
 
-# In[15]:
+# In[44]:
 
 
 ## 加载具有最好验证loss的模型
@@ -505,7 +525,7 @@ model.load_weights('saved_models/weights.best.from_scratch.hdf5')
 # 
 # 在狗图像的测试数据集上试用你的模型。确保测试准确率大于1%。
 
-# In[16]:
+# In[45]:
 
 
 # 获取测试数据集中每一个图像所预测的狗品种的index
@@ -526,7 +546,7 @@ print('Test accuracy: %.4f%%' % test_accuracy)
 
 # ### 得到从图像中提取的特征向量（Bottleneck Features）
 
-# In[17]:
+# In[46]:
 
 
 bottleneck_features = np.load('/data/bottleneck_features/DogVGG16Data.npz')
@@ -539,7 +559,7 @@ test_VGG16 = bottleneck_features['test']
 # 
 # 该模型使用预训练的 VGG-16 模型作为固定的图像特征提取器，其中 VGG-16 最后一层卷积层的输出被直接输入到我们的模型。我们只需要添加一个全局平均池化层以及一个全连接层，其中全连接层使用 softmax 激活函数，对每一个狗的种类都包含一个节点。
 
-# In[18]:
+# In[47]:
 
 
 VGG16_model = Sequential()
@@ -549,7 +569,7 @@ VGG16_model.add(Dense(133, activation='softmax'))
 VGG16_model.summary()
 
 
-# In[19]:
+# In[48]:
 
 
 ## 编译模型
@@ -557,7 +577,7 @@ VGG16_model.summary()
 VGG16_model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 
 
-# In[20]:
+# In[49]:
 
 
 ## 训练模型
@@ -571,7 +591,7 @@ VGG16_model.fit(train_VGG16, train_targets,
 
 
 
-# In[21]:
+# In[50]:
 
 
 ## 加载具有最好验证loss的模型
@@ -582,7 +602,7 @@ VGG16_model.load_weights('saved_models/weights.best.VGG16.hdf5')
 # ### 测试模型
 # 现在，我们可以测试此CNN在狗图像测试数据集中识别品种的效果如何。我们在下方打印出测试准确率。
 
-# In[22]:
+# In[51]:
 
 
 # 获取测试数据集中每一个图像所预测的狗品种的index
@@ -595,7 +615,7 @@ print('Test accuracy: %.4f%%' % test_accuracy)
 
 # ### 使用模型预测狗的品种
 
-# In[23]:
+# In[52]:
 
 
 from extract_bottleneck_features import *
@@ -638,7 +658,7 @@ def VGG16_predict_breed(img_path):
 #     valid_{network} = bottleneck_features['valid']
 #     test_{network} = bottleneck_features['test']
 
-# In[38]:
+# In[53]:
 
 
 ### TODO: 从另一个预训练的CNN获取bottleneck特征
@@ -665,10 +685,19 @@ test_Resnet50 = bottleneck_features['test']
 # 
 # 
 # __回答:__ 
+# 搭建了基于Resnet50模型的两层结构，第一层是全局平均池化层，用来缩小图片的高度和宽度，减少参数数量，增加训练速度，第二层是全连接层，因为狗狗有133个分类，所以建立了一个133个节点的感知层，并使用softmax激活函数。
+# 在迁移学习过程中， 使用这样的架构是因为在Resnet50模型的基础上切断了后面的部分，只使用Resnet50模型的提取到的数据特征，将输出改为适应狗狗分类的结构。  
 # 
+# 问：  
+# 1.为什么这一架构会在这一分类任务中成功（如果这四个模型架构是在营销数据或者语音数据上训练的，放在这一分类任务上，也会成功么？）  
+# 2.为什么早期（第三步 ）的尝试不成功？（第三步的架构相比于四个迁移模型的缺点是什么？）
 # 
+# 答：  
+# 1.Resnet50模型的架构在这一分类任务中比较成功，原因是我们做的狗狗分类图片与Resnet50模型提取特征的方向是大致相同的，特征提取的越精炼，模型表现的越好，当然，要防止过拟合！（如果这四个模型架构是在营销数据或者语音数据上训练的，放在这一分类任务上，我猜测也许会成功吧，因为特征提取对于模型来说是不分种类的，有可能不一样的资源拥有相同的特征，这些特征会影响最终的模型表现，所以，真的说不好，可以在不同的数据上测一测，多多尝试总是没有坏处的！）  
+# 2.第三步的架构是由我们自己搭建的神经网络，相比于已经成型切很成功的网络有很多很多的不足，
+# 如模型采用的分层架构、训练数据的数量、模型参数的优化、权重的优化等等等等。
 
-# In[39]:
+# In[54]:
 
 
 ### TODO: 定义你的框架
@@ -679,11 +708,11 @@ Resnet50_model.add(Dense(133, activation='softmax'))
 Resnet50_model.summary()
 
 
-# In[40]:
+# In[57]:
 
 
 ### TODO: 编译模型
-Resnet50_model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+Resnet50_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 
 # ---
@@ -699,7 +728,7 @@ Resnet50_model.compile(loss='categorical_crossentropy', optimizer='rmsprop', met
 # 当然，你也可以对训练集进行 [数据增强](https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html) 以优化模型的表现，不过这不是必须的步骤。
 # 
 
-# In[41]:
+# In[58]:
 
 
 ### TODO: 训练模型
@@ -711,7 +740,7 @@ Resnet50_model.fit(train_Resnet50, train_targets,
           epochs=20, batch_size=20, callbacks=[Resnet50_checkpointer], verbose=1)
 
 
-# In[42]:
+# In[59]:
 
 
 ### TODO: 加载具有最佳验证loss的模型权重
@@ -728,7 +757,7 @@ Resnet50_model.load_weights('saved_models/weights.best.Resnet50.hdf5')
 # 
 # 在狗图像的测试数据集上试用你的模型。确保测试准确率大于60%。
 
-# In[43]:
+# In[60]:
 
 
 ### TODO: 在测试集上计算分类准确率
